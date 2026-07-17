@@ -574,14 +574,7 @@ func (r *CurlResource) Create(ctx context.Context, req resource.CreateRequest, r
 			bodyString = "{}"
 		}
 
-		var responseCodes []string
-		for _, v := range data.ResponseCodes.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				responseCodes = append(responseCodes, strVal.ValueString())
-			}
-		}
-
-		if responseCodeChecker(responseCodes, strconv.Itoa(statusCode)) {
+		if responseCodeChecker(data.ResponseCodes, statusCode) {
 			break
 		}
 
@@ -875,15 +868,8 @@ func (r *CurlResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 			return
 		}
 
-		var expectedCodes []string
-		for _, v := range data.DestroyResponseCodes.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				expectedCodes = append(expectedCodes, strVal.ValueString())
-			}
-		}
-
 		// Validate Response Code
-		if responseCodeChecker(expectedCodes, strconv.Itoa(statusCode)) {
+		if responseCodeChecker(data.DestroyResponseCodes, statusCode) {
 			tflog.Debug(ctx, "Destroy request completed successfully")
 			break
 		} else {

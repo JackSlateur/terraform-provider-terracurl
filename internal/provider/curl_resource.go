@@ -721,7 +721,7 @@ func (r *CurlResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	}
 
 	// Drift detection
-	if oldSanitized != sanitizedResponse {
+	if !responseCodeChecker(data.ReadResponseCodes, httpResp.StatusCode) || (oldSanitized != "null" && oldSanitized != sanitizedResponse) {
 		tflog.Warn(ctx, "Drift detected: Response has changed, marking for recreation.")
 		data.DriftMarker = types.StringValue(time.Now().Format(time.RFC3339Nano))
 	} else {

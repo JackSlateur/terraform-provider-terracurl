@@ -136,7 +136,11 @@ func TestHTTPClientRoutesHTTPThroughProxy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Errorf("failed to close response body: %v", err)
+		}
+	}()
 
 	if !proxyUsed {
 		t.Fatal("expected request to route through proxy")

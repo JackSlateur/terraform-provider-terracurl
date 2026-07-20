@@ -6,7 +6,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -28,7 +27,6 @@ func NewRequestResource() resource.Resource {
 
 // RequestResource defines the resource implementation.
 type RequestResource struct {
-	client *http.Client
 }
 
 // RequestResourceModel describes the resource data model.

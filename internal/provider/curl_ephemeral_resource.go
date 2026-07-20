@@ -23,7 +23,7 @@ var _ ephemeral.EphemeralResourceWithRenew = (*EphemeralCurlResource)(nil)
 var _ ephemeral.EphemeralResourceWithClose = (*EphemeralCurlResource)(nil)
 
 type EphemeralCurlResource struct {
-	//client *http.Client
+	meta *ProviderMeta
 }
 
 func (e *EphemeralCurlResource) Metadata(ctx context.Context, req ephemeral.MetadataRequest, resp *ephemeral.MetadataResponse) {
@@ -345,6 +345,30 @@ func (e *EphemeralCurlResource) Schema(ctx context.Context, req ephemeral.Schema
 	}
 }
 
+func (e *EphemeralCurlResource) Configure(ctx context.Context, req ephemeral.ConfigureRequest, resp *ephemeral.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	meta, ok := req.ProviderData.(*ProviderMeta)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Ephemeral Resource Configure Type",
+			fmt.Sprintf("Expected *ProviderMeta, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+		return
+	}
+
+	e.meta = meta
+}
+
+func (e *EphemeralCurlResource) providerMeta() *ProviderMeta {
+	if e.meta != nil {
+		return e.meta
+	}
+	return DefaultProviderMeta()
+}
+
 func (e *EphemeralCurlResource) Open(ctx context.Context, req ephemeral.OpenRequest, resp *ephemeral.OpenResponse) {
 	tflog.Debug(ctx, "Running open()")
 	var data CurlEphemeralModel
@@ -382,11 +406,11 @@ func (e *EphemeralCurlResource) Open(ctx context.Context, req ephemeral.OpenRequ
 
 	var client *http.Client
 	var err error
+	var tlsConfig *TlsConfig
 
 	if useTLS {
 		tflog.Debug(ctx, "Creating TLS enabled client")
-		// Build TLS Config.
-		tlsConfig := &TlsConfig{
+		tlsConfig = &TlsConfig{
 			CertFile:        data.CertFile.ValueString(),
 			KeyFile:         data.KeyFile.ValueString(),
 			CaCertFile:      data.CaCertFile.ValueString(),
@@ -394,24 +418,16 @@ func (e *EphemeralCurlResource) Open(ctx context.Context, req ephemeral.OpenRequ
 			SkipTlsVerify:   data.SkipTlsVerify.ValueBool(),
 		}
 
-		// Validate TLS settings.
 		if tlsConfig.CertFile != "" && tlsConfig.KeyFile == "" {
 			resp.Diagnostics.AddError("Validation Error", "`key_file` must be set if `cert_file` is set.")
 			return
 		}
+	}
 
-		// Create TLS-enabled client.
-		client, err = createTlsClient(tlsConfig)
-		if err != nil {
-			resp.Diagnostics.AddError("TLS Client Creation Failed", err.Error())
-			return
-		}
-
-	} else {
-		// Use default non-TLS client.
-		client = &http.Client{
-			Timeout: 30 * time.Second,
-		}
+	client, err = e.providerMeta().NewHTTPClient(tlsConfig)
+	if err != nil {
+		resp.Diagnostics.AddError("HTTP Client Creation Failed", err.Error())
+		return
 	}
 
 	reqBody := []byte(data.RequestBody.ValueString())
@@ -1040,10 +1056,10 @@ func (e *EphemeralCurlResource) Renew(ctx context.Context, req ephemeral.RenewRe
 		(!privateData.RenewKeyFile.IsNull() && privateData.RenewKeyFile.ValueString() != "") ||
 		(!privateData.RenewCaCertFile.IsNull() && privateData.RenewCaCertFile.ValueString() != "")
 
+	var tlsConfig *TlsConfig
 	if useTls {
 		tflog.Debug(ctx, "using TLS client for renew call")
-		// Build TLS Config
-		tlsConfig := &TlsConfig{
+		tlsConfig = &TlsConfig{
 			CertFile:        privateData.RenewCertFile.ValueString(),
 			KeyFile:         privateData.RenewKeyFile.ValueString(),
 			CaCertFile:      privateData.RenewCaCertFile.ValueString(),
@@ -1051,25 +1067,18 @@ func (e *EphemeralCurlResource) Renew(ctx context.Context, req ephemeral.RenewRe
 			SkipTlsVerify:   privateData.RenewSkipTlsVerify.ValueBool(),
 		}
 
-		// Validate TLS settings
 		if tlsConfig.CertFile != "" && tlsConfig.KeyFile == "" {
 			resp.Diagnostics.AddError("Validation Error", "`renew_key_file` must be set if `renew_cert_file` is set.")
 			return
 		}
-
-		// Create TLS-enabled client
-		client, err = createTlsClient(tlsConfig)
-		if err != nil {
-			resp.Diagnostics.AddError("TLS Client Creation Failed", err.Error())
-			return
-		}
-
 	} else {
-		// Use default non-TLS client
 		tflog.Debug(ctx, "using default client for renew call")
-		client = &http.Client{
-			Timeout: 30 * time.Second,
-		}
+	}
+
+	client, err = e.providerMeta().NewHTTPClient(tlsConfig)
+	if err != nil {
+		resp.Diagnostics.AddError("HTTP Client Creation Failed", err.Error())
+		return
 	}
 
 	reqBody := []byte(privateData.RenewRequestBody.ValueString())
@@ -1402,27 +1411,25 @@ func (e *EphemeralCurlResource) Close(ctx context.Context, req ephemeral.CloseRe
 		hasValue(privateData.CloseKeyFile) ||
 		hasValue(privateData.CloseCaCertFile)
 
+	var closeTlsConfig *TlsConfig
 	if useCloseTls {
 		tflog.Debug(ctx, "Using custom TLS client for Close() operation")
 
-		closeTlsConfig := &TlsConfig{
+		closeTlsConfig = &TlsConfig{
 			CertFile:        privateData.CloseCertFile.ValueString(),
 			KeyFile:         privateData.CloseKeyFile.ValueString(),
 			CaCertFile:      privateData.CloseCaCertFile.ValueString(),
 			CaCertDirectory: privateData.CloseCaCertDirectory.ValueString(),
 			SkipTlsVerify:   privateData.CloseSkipTlsVerify.ValueBool(),
 		}
-
-		tlsClient, err := createTlsClient(closeTlsConfig)
-		if err != nil {
-			resp.Diagnostics.AddError("Close Error", fmt.Sprintf("Failed to create TLS client: %s", err))
-			return
-		}
-		client = tlsClient
 	} else {
-		// Default non-TLS client
 		tflog.Debug(ctx, "Using default HTTP client for Close() operation")
-		client = &http.Client{Timeout: 30 * time.Second}
+	}
+
+	client, err = e.providerMeta().NewHTTPClient(closeTlsConfig)
+	if err != nil {
+		resp.Diagnostics.AddError("Close Error", fmt.Sprintf("Failed to create HTTP client: %s", err))
+		return
 	}
 
 	// Build Close Request

@@ -79,6 +79,21 @@ data "terracurl_request" "test" {
   retry_interval = 10
 }
 ```
+
+## HTTP proxy support
+
+TerraCurl supports outbound HTTP and HTTPS proxies through standard environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) and optional provider attributes:
+
+```hcl
+provider "terracurl" {
+  http_proxy  = "http://proxy.example.com:8080"
+  https_proxy = "http://proxy.example.com:8080"
+  no_proxy    = "localhost,127.0.0.1,.internal.example.com"
+}
+```
+
+Provider attributes override environment variables when explicitly set. See the [HTTP Proxy Support guide](https://registry.terraform.io/providers/devops-rob/terracurl/latest/docs/guides/proxy) for full details.
+
 ## Requirements
 
 -	[Terraform](https://www.terraform.io/downloads.html) >= 0.13.x

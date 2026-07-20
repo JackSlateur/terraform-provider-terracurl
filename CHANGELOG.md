@@ -1,3 +1,9 @@
+## 2.4.0
+
+FEATURES:
+
+- Add `terracurl_request` action support for on-demand HTTP requests via `terraform apply -invoke` (Terraform 1.14+). Based on #127 by @jen20.
+
 ## 2.3.1
 
 BUG FIXES:

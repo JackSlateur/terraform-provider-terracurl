@@ -695,7 +695,7 @@ func (r *CurlResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	}
 
 	// ======= Execute Request =======
-	tflog.Debug(ctx, fmt.Sprintf("Resource read API Call: \nURL: %s\nHeaders: %s\nMethod: %s\nRequest Body: %s\n", request.URL.String(), request.Header, request.Method, data.RequestBody.ValueString()))
+	tflog.Debug(ctx, fmt.Sprintf("Resource read API Call: \nURL: %s\nHeaders: %s\nMethod: %s\nRequest Body: %s\n", request.URL.String(), request.Header, request.Method, data.ReadRequestBody.ValueString()))
 
 	httpResp, err := client.Do(request)
 	if err != nil {

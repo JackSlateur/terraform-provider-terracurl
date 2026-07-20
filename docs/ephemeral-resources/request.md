@@ -30,7 +30,7 @@ TerraCurl request ephemeral resource
 - `close_ca_cert_directory` (String) Path to a directory on local disk that contains one or more certificate files that will be used to validate the certificate presented by the server
 - `close_ca_cert_file` (String) Path to a file on local disk that will be used to validate the certificate presented by the server
 - `close_cert_file` (String) Path to a file on local disk that contains the PEM-encoded certificate to present to the server
-- `close_headers` (Map of String) Map of headers to attach to the API call
+- `close_headers` (Map of String) Map of headers to attach to the API call. Host (case-insensitive) overrides the HTTP Host header sent on the wire, independent of the URL hostname.
 - `close_key_file` (String) Path to a file on local disk that contains the PEM-encoded private key for which the authentication certificate was issued
 - `close_max_retry` (Number) Maximum number of tries until it is marked as failed
 - `close_method` (String) HTTP method to use in the API call
@@ -41,13 +41,13 @@ TerraCurl request ephemeral resource
 - `close_skip_tls_verify` (Boolean) Set this to true to disable verification of the server's TLS certificate
 - `close_timeout` (Number) Time in seconds before each request times out. Defaults to 10
 - `close_url` (String) Api endpoint to call
-- `headers` (Map of String) Map of headers to attach to the API call
+- `headers` (Map of String) Map of headers to attach to the API call. Host (case-insensitive) overrides the HTTP Host header sent on the wire, independent of the URL hostname.
 - `key_file` (String) Path to a file on local disk that contains the PEM-encoded private key for which the authentication certificate was issued
 - `max_retry` (Number) Maximum number of tries until it is marked as failed
 - `renew_ca_cert_directory` (String) Path to a directory on local disk that contains one or more certificate files that will be used to validate the certificate presented by the server
 - `renew_ca_cert_file` (String) Path to a file on local disk that will be used to validate the certificate presented by the server
 - `renew_cert_file` (String) Path to a file on local disk that contains the PEM-encoded certificate to present to the server
-- `renew_headers` (Map of String) Map of headers to attach to the API call
+- `renew_headers` (Map of String) Map of headers to attach to the API call. Host (case-insensitive) overrides the HTTP Host header sent on the wire, independent of the URL hostname.
 - `renew_interval` (Number) Interval in seconds to renew this resource.
 - `renew_key_file` (String) Path to a file on local disk that contains the PEM-encoded private key for which the authentication certificate was issued
 - `renew_max_retry` (Number) Maximum number of tries until it is marked as failed

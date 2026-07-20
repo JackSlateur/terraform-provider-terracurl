@@ -82,7 +82,7 @@ func (d *CurlDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 			"headers": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
-				MarkdownDescription: "Map of headers to attach to the API call",
+				MarkdownDescription: "Map of headers to attach to the API call." + hostHeaderMarkdownSuffix,
 			},
 			"request_parameters": schema.MapAttribute{
 				ElementType:         types.StringType,
@@ -210,13 +210,7 @@ func (d *CurlDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	}
 
 	// Add headers.
-	if !data.Headers.IsNull() && !data.Headers.IsUnknown() {
-		for k, v := range data.Headers.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				request.Header.Set(k, strVal.ValueString())
-			}
-		}
-	}
+	applyRequestHeaders(request, data.Headers)
 
 	// Add query parameters.
 	if !data.RequestParameters.IsNull() && !data.RequestParameters.IsUnknown() {

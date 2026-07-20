@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -214,4 +215,22 @@ func convertStringMapToTFValues(input map[string]string) map[string]attr.Value {
 
 func hasValue(s types.String) bool {
 	return !s.IsNull() && s.ValueString() != ""
+}
+
+const hostHeaderMarkdownSuffix = " Host (case-insensitive) overrides the HTTP Host header sent on the wire, independent of the URL hostname."
+
+func applyRequestHeaders(req *http.Request, headers types.Map) {
+	if headers.IsNull() || headers.IsUnknown() {
+		return
+	}
+
+	for k, v := range headers.Elements() {
+		if strVal, ok := v.(types.String); ok {
+			if strings.EqualFold(k, "host") {
+				req.Host = strVal.ValueString()
+				continue
+			}
+			req.Header.Set(k, strVal.ValueString())
+		}
+	}
 }

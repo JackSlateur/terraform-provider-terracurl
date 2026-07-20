@@ -47,6 +47,8 @@ type CurlDataSourceModel struct {
 	MaxRetry          types.Int64  `tfsdk:"max_retry"`
 	Timeout           types.Int64  `tfsdk:"timeout"`
 	Response          types.String `tfsdk:"response"`
+	SensitiveResponse types.String `tfsdk:"sensitive_response"`
+	ResponseSensitive types.Bool   `tfsdk:"response_sensitive"`
 	ResponseCodes     types.List   `tfsdk:"response_codes"`
 	StatusCode        types.String `tfsdk:"status_code"`
 }
@@ -128,7 +130,17 @@ func (d *CurlDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 			},
 			"response": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "JSON response received from request",
+				MarkdownDescription: "JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_response` instead.",
+			},
+			"sensitive_response": schema.StringAttribute{
+				Computed:            true,
+				Sensitive:           true,
+				MarkdownDescription: "JSON response received from request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.",
+			},
+			"response_sensitive": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Set to `true` to treat the response as sensitive. When enabled, the response body is written to `sensitive_response` (a sensitive attribute) and `response` is left empty so that secret values are not displayed in plan output. Defaults to `false` to preserve existing behavior.",
 			},
 			"response_codes": schema.ListAttribute{
 				Required:            true,
@@ -286,7 +298,7 @@ func (d *CurlDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	}
 
 	data.RequestUrlString = types.StringValue(request.URL.String())
-	data.Response = types.StringValue(bodyString)
+	setDataSourceResponseValues(&data, bodyString)
 	data.StatusCode = types.StringValue(strconv.Itoa(statusCode))
 
 	// Save data into Terraform state.

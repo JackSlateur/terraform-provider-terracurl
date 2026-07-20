@@ -59,8 +59,10 @@ type CurlEphemeralModel struct {
 	RetryInterval     types.Int64  `tfsdk:"retry_interval"`
 	MaxRetry          types.Int64  `tfsdk:"max_retry"`
 	Timeout           types.Int64  `tfsdk:"timeout"`
-	Response          types.String `tfsdk:"response"`
-	ResponseCodes     types.List   `tfsdk:"response_codes"`
+	Response                 types.String `tfsdk:"response"`
+	SensitiveResponse        types.String `tfsdk:"sensitive_response"`
+	ResponseSensitive        types.Bool   `tfsdk:"response_sensitive"`
+	ResponseCodes            types.List   `tfsdk:"response_codes"`
 	StatusCode        types.String `tfsdk:"status_code"`
 	SkipRenew         types.Bool   `tfsdk:"skip_renew"`
 
@@ -80,6 +82,7 @@ type CurlEphemeralModel struct {
 	RenewMaxRetry          types.Int64  `tfsdk:"renew_max_retry"`
 	RenewTimeout           types.Int64  `tfsdk:"renew_timeout"`
 	RenewResponse          types.String `tfsdk:"renew_response"`
+	SensitiveRenewResponse types.String `tfsdk:"sensitive_renew_response"`
 	RenewResponseCodes     types.List   `tfsdk:"renew_response_codes"`
 
 	SkipClose types.Bool `tfsdk:"skip_close"`
@@ -99,6 +102,7 @@ type CurlEphemeralModel struct {
 	CloseMaxRetry          types.Int64  `tfsdk:"close_max_retry"`
 	CloseTimeout           types.Int64  `tfsdk:"close_timeout"`
 	CloseResponse          types.String `tfsdk:"close_response"`
+	SensitiveCloseResponse types.String `tfsdk:"sensitive_close_response"`
 	CloseResponseCodes     types.List   `tfsdk:"close_response_codes"`
 }
 
@@ -177,7 +181,17 @@ func (e *EphemeralCurlResource) Schema(ctx context.Context, req ephemeral.Schema
 			},
 			"response": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "JSON response received from request",
+				MarkdownDescription: "JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_response` instead.",
+			},
+			"sensitive_response": schema.StringAttribute{
+				Computed:            true,
+				Sensitive:           true,
+				MarkdownDescription: "JSON response received from request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.",
+			},
+			"response_sensitive": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				MarkdownDescription: "Set to `true` to treat response bodies as sensitive. When enabled, response bodies are written to the corresponding `sensitive_*` attributes and the non-sensitive attributes are left empty so secret values are not displayed in plan output. Defaults to `false` to preserve existing behavior.",
 			},
 			"response_codes": schema.ListAttribute{
 				Required:            true,
@@ -260,7 +274,12 @@ func (e *EphemeralCurlResource) Schema(ctx context.Context, req ephemeral.Schema
 			},
 			"renew_response": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "JSON response received from request",
+				MarkdownDescription: "JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_renew_response` instead.",
+			},
+			"sensitive_renew_response": schema.StringAttribute{
+				Computed:            true,
+				Sensitive:           true,
+				MarkdownDescription: "JSON response received from renew request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.",
 			},
 			"renew_response_codes": schema.ListAttribute{
 				Optional:            true,
@@ -334,7 +353,12 @@ func (e *EphemeralCurlResource) Schema(ctx context.Context, req ephemeral.Schema
 			},
 			"close_response": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "JSON response received from request",
+				MarkdownDescription: "JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_close_response` instead.",
+			},
+			"sensitive_close_response": schema.StringAttribute{
+				Computed:            true,
+				Sensitive:           true,
+				MarkdownDescription: "JSON response received from close request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.",
 			},
 			"close_response_codes": schema.ListAttribute{
 				Optional:            true,
@@ -514,7 +538,7 @@ func (e *EphemeralCurlResource) Open(ctx context.Context, req ephemeral.OpenRequ
 	}
 
 	data.RequestUrlString = types.StringValue(request.URL.String())
-	data.Response = types.StringValue(bodyString)
+	setEphemeralOpenResponse(&data, bodyString)
 	data.StatusCode = types.StringValue(strconv.Itoa(statusCode))
 
 	tflog.Debug(ctx, fmt.Sprintf("renew parameters in Open() is set to %v", convertMap(data.RenewRequestParameters)))
@@ -544,7 +568,8 @@ func (e *EphemeralCurlResource) Open(ctx context.Context, req ephemeral.OpenRequ
 		"Timeout":           data.Timeout.ValueInt64(),
 		"StatusCode":        data.StatusCode.ValueString(),
 		"Response_codes":    data.ResponseCodes.Elements(),
-		"Response":          data.Response.ValueString(),
+		"Response":          bodyString,
+		"ResponseSensitive": data.ResponseSensitive.ValueBool(),
 
 		"SkipRenew":              data.SkipRenew.ValueBool(),
 		"RenewUrl":               data.RenewUrl.ValueString(),
@@ -984,7 +1009,13 @@ func (e *EphemeralCurlResource) Renew(ctx context.Context, req ephemeral.RenewRe
 		return
 	}
 
+	responseSensitive, ok := privateMap["ResponseSensitive"].(bool)
+	if !ok {
+		responseSensitive = false
+	}
+
 	privateData := CurlEphemeralModel{
+		ResponseSensitive:      types.BoolValue(responseSensitive),
 		RenewMethod:            types.StringValue(renewMethod),
 		RenewUrl:               types.StringValue(renewUrl),
 		SkipRenew:              types.BoolValue(skipRenew),
@@ -1161,7 +1192,7 @@ func (e *EphemeralCurlResource) Renew(ctx context.Context, req ephemeral.RenewRe
 	}
 
 	privateData.RenewRequestUrlString = types.StringValue(request.URL.String())
-	privateData.RenewResponse = types.StringValue(bodyString)
+	setEphemeralRenewResponse(&privateData, bodyString)
 	privateData.StatusCode = types.StringValue(strconv.Itoa(statusCode))
 
 	// Renew again
@@ -1362,7 +1393,13 @@ func (e *EphemeralCurlResource) Close(ctx context.Context, req ephemeral.CloseRe
 		return
 	}
 
+	responseSensitive, ok := privateMap["ResponseSensitive"].(bool)
+	if !ok {
+		responseSensitive = false
+	}
+
 	privateData := CurlEphemeralModel{
+		ResponseSensitive:      types.BoolValue(responseSensitive),
 		CloseMethod:            types.StringValue(closeMethod),
 		CloseUrl:               types.StringValue(closeUrl),
 		SkipClose:              types.BoolValue(skipClose),
@@ -1521,6 +1558,7 @@ func (e *EphemeralCurlResource) Close(ctx context.Context, req ephemeral.CloseRe
 		}
 	}
 
+	setEphemeralCloseResponse(&privateData, string(bodyBytes))
 }
 
 func (e EphemeralCurlResource) ConfigValidators(ctx context.Context) []ephemeral.ConfigValidator {

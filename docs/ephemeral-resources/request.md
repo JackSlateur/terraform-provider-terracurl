@@ -61,6 +61,7 @@ TerraCurl request ephemeral resource
 - `renew_url` (String) Api endpoint to call
 - `request_body` (String) A request body to attach to the API call
 - `request_parameters` (Map of String) Map of parameters to attach to the API call
+- `response_sensitive` (Boolean) Set to `true` to treat response bodies as sensitive. When enabled, response bodies are written to the corresponding `sensitive_*` attributes and the non-sensitive attributes are left empty so secret values are not displayed in plan output. Defaults to `false` to preserve existing behavior.
 - `retry_interval` (Number) Interval between each attempt
 - `skip_close` (Boolean) Set to true if there are no api calls to make to clean up the ephemeral resource on the target platform. Default value is set to `true`.
 - `skip_renew` (Boolean) Set to true to skip renewing ephemeral resources. Default value is `true`
@@ -70,10 +71,13 @@ TerraCurl request ephemeral resource
 ### Read-Only
 
 - `close_request_url_string` (String) Request URL includes parameters if request specified
-- `close_response` (String) JSON response received from request
+- `close_response` (String) JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_close_response` instead.
 - `id` (String) Example identifier
 - `renew_request_url_string` (String) Request URL includes parameters if request specified
-- `renew_response` (String) JSON response received from request
+- `renew_response` (String) JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_renew_response` instead.
 - `request_url_string` (String) Request URL includes parameters if request specified
-- `response` (String) JSON response received from request
+- `response` (String) JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_response` instead.
+- `sensitive_close_response` (String, Sensitive) JSON response received from close request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.
+- `sensitive_renew_response` (String, Sensitive) JSON response received from renew request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.
+- `sensitive_response` (String, Sensitive) JSON response received from request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.
 - `status_code` (String) Response status code received from request

@@ -43,6 +43,78 @@ func sanitizeResponse(response string, fieldsToIgnore []string) (string, error) 
 	return string(filteredBytes), nil
 }
 
+// setResponseValue writes body to either response or sensitiveResponse based on
+// the sensitive flag. The unused attribute is always set to an empty string so
+// Terraform does not report it as unknown.
+func setResponseValue(sensitive bool, response, sensitiveResponse *types.String, body string) {
+	if sensitive {
+		*response = types.StringValue("")
+		*sensitiveResponse = types.StringValue(body)
+	} else {
+		*response = types.StringValue(body)
+		*sensitiveResponse = types.StringValue("")
+	}
+}
+
+func responseSensitiveEnabled(value types.Bool) bool {
+	if value.IsNull() || value.IsUnknown() {
+		return false
+	}
+	return value.ValueBool()
+}
+
+func priorResponseValue(responseSensitive types.Bool, response, sensitiveResponse types.String) string {
+	if responseSensitiveEnabled(responseSensitive) {
+		return sensitiveResponse.ValueString()
+	}
+	return response.ValueString()
+}
+
+func setResourceResponseValues(data *CurlResourceModel, body string) {
+	setResponseValue(
+		responseSensitiveEnabled(data.ResponseSensitive),
+		&data.Response,
+		&data.SensitiveResponse,
+		body,
+	)
+}
+
+func setEphemeralOpenResponse(data *CurlEphemeralModel, body string) {
+	setResponseValue(
+		responseSensitiveEnabled(data.ResponseSensitive),
+		&data.Response,
+		&data.SensitiveResponse,
+		body,
+	)
+}
+
+func setEphemeralRenewResponse(data *CurlEphemeralModel, body string) {
+	setResponseValue(
+		responseSensitiveEnabled(data.ResponseSensitive),
+		&data.RenewResponse,
+		&data.SensitiveRenewResponse,
+		body,
+	)
+}
+
+func setEphemeralCloseResponse(data *CurlEphemeralModel, body string) {
+	setResponseValue(
+		responseSensitiveEnabled(data.ResponseSensitive),
+		&data.CloseResponse,
+		&data.SensitiveCloseResponse,
+		body,
+	)
+}
+
+func setDataSourceResponseValues(data *CurlDataSourceModel, body string) {
+	setResponseValue(
+		responseSensitiveEnabled(data.ResponseSensitive),
+		&data.Response,
+		&data.SensitiveResponse,
+		body,
+	)
+}
+
 func responseCodeChecker(s []string, str string) bool {
 	for _, v := range s {
 		if v == str {

@@ -1,3 +1,9 @@
+## 2.5.0
+
+FEATURES:
+
+- Add optional `response_sensitive` and sensitive response attributes to `terracurl_request` resource, data source, and ephemeral resource to prevent secret values appearing in plan output. Based on #144 by @ohaibbq. Closes #142.
+
 ## 2.4.2
 
 BUG FIXES:

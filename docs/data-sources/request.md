@@ -32,6 +32,7 @@ TerraCurl request data source
 - `max_retry` (Number) Maximum number of tries until it is marked as failed
 - `request_body` (String) A request body to attach to the API call
 - `request_parameters` (Map of String) Map of parameters to attach to the API call
+- `response_sensitive` (Boolean) Set to `true` to treat the response as sensitive. When enabled, the response body is written to `sensitive_response` (a sensitive attribute) and `response` is left empty so that secret values are not displayed in plan output. Defaults to `false` to preserve existing behavior.
 - `retry_interval` (Number) Interval between each attempt
 - `skip_tls_verify` (Boolean) Set this to true to disable verification of the server's TLS certificate
 - `timeout` (Number) Time in seconds before each request times out. Defaults to 10
@@ -40,5 +41,6 @@ TerraCurl request data source
 
 - `id` (String) Example identifier
 - `request_url_string` (String) Request URL includes parameters if request specified
-- `response` (String) JSON response received from request
+- `response` (String) JSON response received from request. Empty when `response_sensitive` is `true`; use `sensitive_response` instead.
+- `sensitive_response` (String, Sensitive) JSON response received from request, marked as sensitive so it is not displayed in plan output. Populated only when `response_sensitive` is `true`.
 - `status_code` (String) Response status code received from request

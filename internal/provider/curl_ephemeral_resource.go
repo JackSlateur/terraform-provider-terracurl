@@ -59,10 +59,10 @@ type CurlEphemeralModel struct {
 	RetryInterval     types.Int64  `tfsdk:"retry_interval"`
 	MaxRetry          types.Int64  `tfsdk:"max_retry"`
 	Timeout           types.Int64  `tfsdk:"timeout"`
-	Response                 types.String `tfsdk:"response"`
-	SensitiveResponse        types.String `tfsdk:"sensitive_response"`
-	ResponseSensitive        types.Bool   `tfsdk:"response_sensitive"`
-	ResponseCodes            types.List   `tfsdk:"response_codes"`
+	Response          types.String `tfsdk:"response"`
+	SensitiveResponse types.String `tfsdk:"sensitive_response"`
+	ResponseSensitive types.Bool   `tfsdk:"response_sensitive"`
+	ResponseCodes     types.List   `tfsdk:"response_codes"`
 	StatusCode        types.String `tfsdk:"status_code"`
 	SkipRenew         types.Bool   `tfsdk:"skip_renew"`
 

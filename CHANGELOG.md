@@ -1,3 +1,9 @@
+## 2.3.1
+
+BUG FIXES:
+
+- Fix Host header override when `Host` is set in request header maps (fixes #79). Based on #97 by @JoshBlades.
+
 ## 2.3.0
 
 FEATURES:

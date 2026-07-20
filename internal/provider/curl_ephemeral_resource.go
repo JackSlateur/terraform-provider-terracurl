@@ -131,7 +131,7 @@ func (e *EphemeralCurlResource) Schema(ctx context.Context, req ephemeral.Schema
 			"headers": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
-				MarkdownDescription: "Map of headers to attach to the API call",
+				MarkdownDescription: "Map of headers to attach to the API call." + hostHeaderMarkdownSuffix,
 			},
 			"request_parameters": schema.MapAttribute{
 				ElementType:         types.StringType,
@@ -214,7 +214,7 @@ func (e *EphemeralCurlResource) Schema(ctx context.Context, req ephemeral.Schema
 			"renew_headers": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
-				MarkdownDescription: "Map of headers to attach to the API call",
+				MarkdownDescription: "Map of headers to attach to the API call." + hostHeaderMarkdownSuffix,
 			},
 			"renew_request_parameters": schema.MapAttribute{
 				ElementType:         types.StringType,
@@ -288,7 +288,7 @@ func (e *EphemeralCurlResource) Schema(ctx context.Context, req ephemeral.Schema
 			"close_headers": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
-				MarkdownDescription: "Map of headers to attach to the API call",
+				MarkdownDescription: "Map of headers to attach to the API call." + hostHeaderMarkdownSuffix,
 			},
 			"close_request_parameters": schema.MapAttribute{
 				ElementType:         types.StringType,
@@ -438,13 +438,7 @@ func (e *EphemeralCurlResource) Open(ctx context.Context, req ephemeral.OpenRequ
 	}
 
 	// Add headers.
-	if !data.Headers.IsNull() && !data.Headers.IsUnknown() {
-		for k, v := range data.Headers.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				request.Header.Set(k, strVal.ValueString())
-			}
-		}
-	}
+	applyRequestHeaders(request, data.Headers)
 
 	// Add query parameters.
 	if !data.RequestParameters.IsNull() && !data.RequestParameters.IsUnknown() {
@@ -1089,13 +1083,7 @@ func (e *EphemeralCurlResource) Renew(ctx context.Context, req ephemeral.RenewRe
 	}
 
 	// Add headers
-	if !privateData.RenewHeaders.IsNull() && !privateData.RenewHeaders.IsUnknown() {
-		for k, v := range privateData.RenewHeaders.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				request.Header.Set(k, strVal.ValueString())
-			}
-		}
-	}
+	applyRequestHeaders(request, privateData.RenewHeaders)
 
 	tflog.Debug(ctx, fmt.Sprintf("Parameters: %v\n", privateData.RenewRequestParameters.Elements()))
 
@@ -1445,14 +1433,10 @@ func (e *EphemeralCurlResource) Close(ctx context.Context, req ephemeral.CloseRe
 		return
 	}
 
-	if !privateData.CloseHeaders.IsNull() && !privateData.CloseHeaders.IsUnknown() {
-		for k, v := range privateData.CloseHeaders.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				request.Header.Set(k, strVal.ValueString())
-			}
-		}
-	} else {
+	if privateData.CloseHeaders.IsNull() || privateData.CloseHeaders.IsUnknown() {
 		tflog.Debug(ctx, "No CloseHeaders provided, proceeding without headers")
+	} else {
+		applyRequestHeaders(request, privateData.CloseHeaders)
 	}
 
 	// Add Query Parameters

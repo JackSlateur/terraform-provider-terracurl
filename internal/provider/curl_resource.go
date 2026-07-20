@@ -142,7 +142,7 @@ func (r *CurlResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 			"headers": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
-				MarkdownDescription: "Map of headers to attach to the API call",
+				MarkdownDescription: "Map of headers to attach to the API call." + hostHeaderMarkdownSuffix,
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.RequiresReplace(),
 				},
@@ -255,7 +255,7 @@ func (r *CurlResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 			"destroy_headers": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
-				MarkdownDescription: "Map of headers to attach to the destroy API call",
+				MarkdownDescription: "Map of headers to attach to the destroy API call." + hostHeaderMarkdownSuffix,
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.RequiresReplace(),
 				},
@@ -347,7 +347,7 @@ func (r *CurlResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 			"read_headers": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
-				MarkdownDescription: "Map of headers for the read request.",
+				MarkdownDescription: "Map of headers for the read request." + hostHeaderMarkdownSuffix,
 			},
 
 			"read_request_body": schema.StringAttribute{
@@ -510,13 +510,7 @@ func (r *CurlResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	// Add headers
-	if !data.Headers.IsNull() && !data.Headers.IsUnknown() {
-		for k, v := range data.Headers.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				request.Header.Set(k, strVal.ValueString())
-			}
-		}
-	}
+	applyRequestHeaders(request, data.Headers)
 
 	// Add query parameters
 	if !data.RequestParameters.IsNull() && !data.RequestParameters.IsUnknown() {
@@ -661,13 +655,7 @@ func (r *CurlResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	}
 
 	// ======= Add Headers =======
-	if !data.ReadHeaders.IsNull() && !data.ReadHeaders.IsUnknown() {
-		for k, v := range data.ReadHeaders.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				request.Header.Set(k, strVal.ValueString())
-			}
-		}
-	}
+	applyRequestHeaders(request, data.ReadHeaders)
 
 	// ======= Add Query Parameters =======
 	if !data.ReadParameters.IsNull() && !data.ReadParameters.IsUnknown() {
@@ -815,13 +803,7 @@ func (r *CurlResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	}
 
 	// Add Headers
-	if !data.DestroyHeaders.IsNull() && !data.DestroyHeaders.IsUnknown() {
-		for k, v := range data.DestroyHeaders.Elements() {
-			if strVal, ok := v.(types.String); ok {
-				request.Header.Set(k, strVal.ValueString())
-			}
-		}
-	}
+	applyRequestHeaders(request, data.DestroyHeaders)
 
 	// Add Query Parameters
 	if !data.DestroyRequestParameters.IsNull() && !data.DestroyRequestParameters.IsUnknown() {

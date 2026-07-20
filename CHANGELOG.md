@@ -1,3 +1,9 @@
+## 2.4.2
+
+BUG FIXES:
+
+- Fix false drift when `Create()` stored unsanitized HTTP responses while `Read()` used sanitized JSON (fixes Create/Read mismatch for `response` and `ignore_response_fields`). Based on #141 by @rrrix.
+
 ## 2.4.1
 
 ENHANCEMENTS:

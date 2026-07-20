@@ -1,3 +1,10 @@
+## 2.4.1
+
+ENHANCEMENTS:
+
+- Upgrade HashiCorp plugin dependencies: `terraform-plugin-framework` v1.19.0, `terraform-plugin-go` v0.31.0, `terraform-plugin-testing` v1.16.0
+- Supersedes Dependabot PRs #138, #139, and #140
+
 ## 2.4.0
 
 FEATURES:

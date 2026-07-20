@@ -41,7 +41,7 @@ func NewCurlResource() resource.Resource {
 
 // CurlResource defines the resource implementation.
 type CurlResource struct {
-	client *http.Client
+	meta *ProviderMeta
 }
 
 // CurlResourceModel describes the resource data model.
@@ -407,23 +407,27 @@ func (r *CurlResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 }
 
 func (r *CurlResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
 	}
 
-	client, ok := req.ProviderData.(*http.Client)
-
+	meta, ok := req.ProviderData.(*ProviderMeta)
 	if !ok {
 		resp.Diagnostics.AddError(
 			"Unexpected Resource Configure Type",
-			fmt.Sprintf("Expected *http.Client, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+			fmt.Sprintf("Expected *ProviderMeta, got: %T. Please report this issue to the provider developers.", req.ProviderData),
 		)
-
 		return
 	}
 
-	r.client = client
+	r.meta = meta
+}
+
+func (r *CurlResource) providerMeta() *ProviderMeta {
+	if r.meta != nil {
+		return r.meta
+	}
+	return DefaultProviderMeta()
 }
 
 func (r *CurlResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
@@ -475,10 +479,10 @@ func (r *CurlResource) Create(ctx context.Context, req resource.CreateRequest, r
 
 	var client *http.Client
 	var err error
+	var tlsConfig *TlsConfig
 
 	if useTLS {
-		// Build TLS Config
-		tlsConfig := &TlsConfig{
+		tlsConfig = &TlsConfig{
 			CertFile:        data.CertFile.ValueString(),
 			KeyFile:         data.KeyFile.ValueString(),
 			CaCertFile:      data.CaCertFile.ValueString(),
@@ -486,24 +490,16 @@ func (r *CurlResource) Create(ctx context.Context, req resource.CreateRequest, r
 			SkipTlsVerify:   data.SkipTlsVerify.ValueBool(),
 		}
 
-		// Validate TLS settings
 		if tlsConfig.CertFile != "" && tlsConfig.KeyFile == "" {
 			resp.Diagnostics.AddError("Validation Error", "`key_file` must be set if `cert_file` is set.")
 			return
 		}
+	}
 
-		// Create TLS-enabled client
-		client, err = createTlsClient(tlsConfig)
-		if err != nil {
-			resp.Diagnostics.AddError("TLS Client Creation Failed", err.Error())
-			return
-		}
-
-	} else {
-		// Use default non-TLS client
-		client = &http.Client{
-			Timeout: 30 * time.Second,
-		}
+	client, err = r.providerMeta().NewHTTPClient(tlsConfig)
+	if err != nil {
+		resp.Diagnostics.AddError("HTTP Client Creation Failed", err.Error())
+		return
 	}
 
 	reqBody := []byte(data.RequestBody.ValueString())
@@ -630,27 +626,26 @@ func (r *CurlResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	var client *http.Client
 	useReadTls := !data.ReadCertFile.IsNull() || !data.ReadKeyFile.IsNull() || !data.ReadCaCertFile.IsNull()
 
+	var readTlsConfig *TlsConfig
 	if useReadTls {
 		tflog.Debug(ctx, "Using custom TLS client for Read() operation")
 
-		readTlsConfig := &TlsConfig{
+		readTlsConfig = &TlsConfig{
 			CertFile:        data.ReadCertFile.ValueString(),
 			KeyFile:         data.ReadKeyFile.ValueString(),
 			CaCertFile:      data.ReadCaCertFile.ValueString(),
 			CaCertDirectory: data.ReadCaCertDirectory.ValueString(),
 			SkipTlsVerify:   data.ReadSkipTlsVerify.ValueBool(),
 		}
-
-		tlsClient, err := createTlsClient(readTlsConfig)
-		if err != nil {
-			resp.Diagnostics.AddError("Read Error", fmt.Sprintf("Failed to create TLS client: %s", err))
-			return
-		}
-		client = tlsClient
 	} else {
-		// Default non-TLS client
 		tflog.Debug(ctx, "Using default HTTP client for Read() operation")
-		client = &http.Client{Timeout: 30 * time.Second}
+	}
+
+	var err error
+	client, err = r.providerMeta().NewHTTPClient(readTlsConfig)
+	if err != nil {
+		resp.Diagnostics.AddError("Read Error", fmt.Sprintf("Failed to create HTTP client: %s", err))
+		return
 	}
 
 	// ======= Build Read Request =======
@@ -786,27 +781,25 @@ func (r *CurlResource) Delete(ctx context.Context, req resource.DeleteRequest, r
 	var client *http.Client
 	useDestroyTls := !data.DestroyCertFile.IsNull() || !data.DestroyKeyFile.IsNull() || !data.DestroyCaCertFile.IsNull()
 
+	var destroyTlsConfig *TlsConfig
 	if useDestroyTls {
 		tflog.Debug(ctx, "Using custom TLS client for Destroy() operation")
 
-		destroyTlsConfig := &TlsConfig{
+		destroyTlsConfig = &TlsConfig{
 			CertFile:        data.DestroyCertFile.ValueString(),
 			KeyFile:         data.DestroyKeyFile.ValueString(),
 			CaCertFile:      data.DestroyCaCertFile.ValueString(),
 			CaCertDirectory: data.DestroyCaCertDirectory.ValueString(),
 			SkipTlsVerify:   data.DestroySkipTlsVerify.ValueBool(),
 		}
-
-		tlsClient, err := createTlsClient(destroyTlsConfig)
-		if err != nil {
-			resp.Diagnostics.AddError("Destroy Error", fmt.Sprintf("Failed to create TLS client: %s", err))
-			return
-		}
-		client = tlsClient
 	} else {
-		// Default non-TLS client
 		tflog.Debug(ctx, "Using default HTTP client for Destroy() operation")
-		client = &http.Client{Timeout: 30 * time.Second}
+	}
+
+	client, err := r.providerMeta().NewHTTPClient(destroyTlsConfig)
+	if err != nil {
+		resp.Diagnostics.AddError("Destroy Error", fmt.Sprintf("Failed to create HTTP client: %s", err))
+		return
 	}
 
 	// Build Destroy Request

@@ -44,18 +44,6 @@ func sanitizeResponse(response string, fieldsToIgnore []string) (string, error) 
 	return string(filteredBytes), nil
 }
 
-func responseCodeChecker(expectedStatusCodes types.List, receivedStatusCode int) bool {
-	var responseStatusCodes []string
-	for _, v := range expectedStatusCodes.Elements() {
-		if strVal, ok := v.(types.String); ok {
-			responseStatusCodes = append(responseStatusCodes, strVal.ValueString())
-		}
-	}
-
-	var receivedStatusCodeAsInt = strconv.Itoa(receivedStatusCode)
-
-	for _, v := range responseStatusCodes {
-		if v == receivedStatusCodeAsInt {
 // setResponseValue writes body to either response or sensitiveResponse based on
 // the sensitive flag. The unused attribute is always set to an empty string so
 // Terraform does not report it as unknown.
@@ -126,6 +114,25 @@ func setDataSourceResponseValues(data *CurlDataSourceModel, body string) {
 		&data.SensitiveResponse,
 		body,
 	)
+}
+
+func responseCodeChecker(expectedStatusCodes types.List, receivedStatusCode int) bool {
+	var responseStatusCodes []string
+	for _, v := range expectedStatusCodes.Elements() {
+		if strVal, ok := v.(types.String); ok {
+			responseStatusCodes = append(responseStatusCodes, strVal.ValueString())
+		}
+	}
+
+	receivedStatusCodeAsInt := strconv.Itoa(receivedStatusCode)
+
+	for _, v := range responseStatusCodes {
+		if v == receivedStatusCodeAsInt {
+			return true
+		}
+	}
+
+	return false
 }
 
 type TlsConfig struct {
